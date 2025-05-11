@@ -55,14 +55,14 @@ for SKU in read_file.SKU:
     # load website
     driver.get(website + SKU_num)
 
-    print("SKU: " + SKU)
+    # print("SKU: " + SKU)
 
-    time.sleep(randint(1,3))    
-
-    #Searches all info in listings containers
-    result_lst = driver.find_elements(By.CLASS_NAME, 'listings-container')
-    #If no result, write NA
-    if len(result_lst) == 0:
+    # Wait for page listings
+    try:
+        WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.CLASS_NAME, 'listings-container'))
+        )
+    except TimeoutException:
         writer.writerow([SKU, "N/A", "N/A", "N/A", "N/A", "N/A"])
         continue
     
