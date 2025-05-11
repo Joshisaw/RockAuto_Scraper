@@ -25,7 +25,7 @@ driver = uc.Chrome(options=options, service=Service(ChromeDriverManager().instal
 
 # File paths
 read_path = r"V:\07-ProductData\A. Product_Pictures\Intern Startup\Vehicle_Specification\SKU_List.csv"
-write_path = r"V:\07-ProductData\A. Product_Pictures\Intern Startup\Vehicle_Specification\Rock_Auto_Scrap_Result2"
+write_path = r"V:\07-ProductData\A. Product_Pictures\Intern Startup\Vehicle_Specification\Rock_Auto_Scrap_Result"
 
 # Load SKU list
 read_file = pd.read_csv(read_path, dtype={'SKU': str})
@@ -45,12 +45,15 @@ website = "https://www.rockauto.com/en/partsearch/?partnum="
 
 #reads through each line
 for SKU in read_file.SKU:
-    #Removes any K or extra letters from SKU
-    SKU_num = SKU
-    if re.fullmatch(r"[^a-zA-Z]*[kK]", SKU):
-        SKU_num = SKU[:-1]
-    full_URL = website + SKU_num
-    driver.get(full_URL)
+    # Normalize SKU
+    SKU_num = SKU.strip() # remove whitespace (if any)
+    if SKU_num.upper().startswith(("HA", "BF", "BH")):
+        SKU_num = SKU_num[2:]
+    if SKU_num.upper().endswith("K"):
+        SKU_num = SKU_num[:-1]
+
+    # load website
+    driver.get(website + SKU_num)
 
     print("SKU: " + SKU)
 
