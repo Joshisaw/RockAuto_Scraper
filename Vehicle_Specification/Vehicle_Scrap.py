@@ -5,6 +5,10 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from webdriver_manager.chrome import ChromeDriverManager
+import undetected_chromedriver as uc
+from fake_useragent import UserAgent
 from random import randint
 import pandas as pd
 import time
@@ -12,59 +16,28 @@ import os
 import re
 import csv
 
-C_path = "C:/Users/Joshua.Wang/Desktop/Vehicle_Specification/chromedriver.exe"  # Absolute path
-if os.path.exists(C_path):
-    print("Chromedriver found!")
-else:
-    print("Chromedriver not found at:", C_path)
+# Setup Chrome driver
+ua = UserAgent()
+options = uc.ChromeOptions()
+options.add_argument(f'user-agent={ua.random}')
+options.add_argument("--disable-blink-features=AutomationControlled")
+driver = uc.Chrome(options=options, service=Service(ChromeDriverManager().install()))
 
-path = os.getcwd()
-print(path)
-C_options = Options()
+# File paths
+read_path = r"V:\07-ProductData\A. Product_Pictures\Intern Startup\Vehicle_Specification\SKU_List.csv"
+write_path = r"V:\07-ProductData\A. Product_Pictures\Intern Startup\Vehicle_Specification\Rock_Auto_Scrap_Result2"
 
-# This stores the path of the directory containing the executing script
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-# Splits the path into a list of directory names using backslash as the delimiter
-dir_lst = ROOT_DIR.split('\\')
-# Here we essentially find the parent of the directory containing the executing script
-# This is because we want to cd (change directory) to the parent of the directory containing the executing script to access the chromedriver
-dir_path = ''
-for k in range(len(dir_lst))[:-1]:
-    dir_path += (dir_lst[k] + '\\')
+# Load SKU list
+read_file = pd.read_csv(read_path, dtype={'SKU': str})
 
-os.chdir(dir_path)
-
-# Configure the browser driver
-C_options = Options()
-C_options.add_argument("--disable-extensions")
-C_options.add_argument("--disable-gpu")
-C_options.add_argument("--headless")
-
-#Sets up service and driver
-service = Service(executable_path=C_path)
-driver = webdriver.Chrome(service=service)
-
-#sets up file to read from
-path_1 = dir_path + 'Vehicle_Specification'
-os.chdir(path_1)
-read_file = pd.read_csv('SKU_List.csv', dtype={'SKU':str})
-
-# Set up csv file to write to, this contains necessary info
-write_path = path_1 + '\\Rock_Auto_Scrap_Result'
-os.chdir(write_path)
-write_file = 'Rock_Auto_Scrap_Result.csv'
-f = open(write_file, 'w', newline='')
+# Set up csv files to write to
+f = open(rf"{write_path}\Rock_Auto_Scrap_Result.csv", 'w', newline='', encoding='utf-8')
 writer = csv.writer(f)
 header = ["Bosda#", "Vehicle", "Model", "Year", "Position", "Application"]
 writer.writerow(header)
 
-# Set up csv file to write to, this contains all info
-write_path_full = path_1 + '\\Rock_Auto_Scrap_Result'
-os.chdir(write_path_full)
-write_file_full = 'Rock_Auto_Scrap_Result_Full.csv'
-s = open(write_file_full, 'w', newline='')
+s = open(rf"{write_path}\Rock_Auto_Scrap_Result_Full.csv", 'w', newline='', encoding='utf-8')
 writer_full = csv.writer(s)
-header = ["Bosda#", "Vehicle", "Model", "Year", "Position", "Application"]
 writer_full.writerow(header)
 
 #get website
