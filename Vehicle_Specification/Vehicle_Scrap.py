@@ -68,53 +68,46 @@ for SKU in read_file.SKU:
     
     #Finds all results in listing container and selects individual one
     all_results = driver.find_elements(By.XPATH, '//*[contains(@class, "listing-border-top-line listing-inner-content")]')
-    #Shows priority
-    moog_index = -1
-    timken_index = -1
-    chosen_index = -1
-
-    #Goes through all results given
-    for i in range(len(all_results)):
-        #Search through all results, finding manufacturer and category
-        manufacturer = all_results[i].find_element(By.CLASS_NAME, 'listing-final-manufacturer').text.lower()
-        category = all_results[i].find_element(By.CLASS_NAME, 'listing-text-row').text.lower()
-        #Sets to index based on results, bu priority
-        if manufacturer == "moog" and ("wheel bearing & hub" in category or "wheel bearing" in category or "wheel hub" in category):
-            moog_index = i
-        elif manufacturer == "timken" and ("wheel bearing & hub" in category or "wheel bearing" in category or "wheel hub" in category):
-            timken_index = i
-        elif "wheel bearing & hub" in category or "wheel bearing" in category or "wheel hub" in category:
-            chosen_index = i
-
-    #if index isn't 0, it sets the actual index
-    if moog_index != -1:
-        chosen_index = moog_index
-    elif timken_index != -1:
-        chosen_index = timken_index
-
-    #If index is -1, means doesn't exist
-    if chosen_index == -1:
-        print("Results are not part of the wheel bearing & hub category")
+    if not all_results:
+        print(f"No results found.")
         writer.writerow([SKU, "N/A", "N/A", "N/A", "N/A", "N/A"])
         continue
-    
-    #Finds part number on index row
-    chosen_item = all_results[chosen_index]
-    chosen_item.find_element(By.XPATH, './/*[contains(@id, "vew_partnumber")]').click()
-    time.sleep(randint(1,3))    
 
-    #goes through and opens pop up tabel of vehicle specifications
-    condition = driver.find_elements(By.XPATH, '//*[@id="buyersguidepopup-outer_b"]/div/div/table')
-    if len(condition) != 0:
+    # Choose listing by brand or fallback to first
+    chosen_index = 0
+    matched_brand = None
+    for i, result in enumerate(all_results):
+        try:
+            manufacturer = result.find_element(By.CLASS_NAME, 'listing-final-manufacturer').text.lower()
+            category = (result.find_element(By.CLASS_NAME, 'listing-text-row').text)[10:]
+            if any(brand in manufacturer for brand in preferred_manufacturers):
+                matched_brand = manufacturer
+                chosen_index = i
+                print(f"{SKU}: Matched brand '{manufacturer}' at index {i}")
+                print(f"Category: {category}")
+                break
+        except NoSuchElementException:
+            continue
+
+    # Click part number to open popup
+    try:
+        chosen_item = all_results[chosen_index]
+        part_link = chosen_item.find_element(By.XPATH, './/*[contains(@id, "vew_partnumber")]')
+        part_link.click()
+        WebDriverWait(driver, 5).until(
+            EC.presence_of_element_located((By.XPATH, '//*[@id="buyersguidepopup-outer_b"]/div/div/table'))
+        )
         model_car_lst = driver.find_elements(By.XPATH, '//*[@id="buyersguidepopup-outer_b"]/div/div/table/tbody/tr')
-        print(len(model_car_lst))
-    else:
-        print(SKU)
-        print("Part number couldn't be found in RockAuto")
-        f.write(SKU + "," + "N/A, N/A, N/A, N/A, N/A\n")
+    except Exception as e:
+        print(f"{SKU}: Error opening part details - {e}")
+        writer.writerow([SKU, "N/A", "N/A", "N/A", "N/A", "N/A"])
         continue
 
     #creates empty arrays of all necessary info
+    # ig this is fine - future maybe create results[] array that stores all rows
+    # current_row = [SKU, Vehicle, Model, Year, Position, Application]
+    # current_row[1] = car_make ...
+    # results.append(current_row) after creation of current_row
     make = [0] * len(model_car_lst)
     model = [0] * len(model_car_lst)
     year = [0] * len(model_car_lst)
