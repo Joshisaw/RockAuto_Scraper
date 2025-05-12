@@ -138,10 +138,9 @@ for SKU in read_file.SKU:
 
         #stores info and advances counter
         counter = counter + 1
-        time.sleep(randint(1,3))
     
     #close dialog box
-    driver.find_element(By.CLASS_NAME, 'dialog-close').click()
+    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CLASS_NAME, 'dialog-close'))).click()
     counter = 0
 
     for engine_iteration in model_car_lst:
@@ -150,59 +149,69 @@ for SKU in read_file.SKU:
         input_element = driver.find_element(By.XPATH, '//input[@id="topsearchinput[input]"]')
         input_element.clear()
         input_element.send_keys(search_string)
-        time.sleep(randint(1,2))
+        time.sleep(.5)
         #finds total engine suggestions
         click_total = driver.find_elements(By.XPATH, '//*[@id="autosuggestions[topsearchinput]"]/tbody/tr')
         #print(click_total[2].text)
         click_iterations = len(click_total)-1
         #if not empty
-        for autosuggestions in range(click_iterations):
+       for autosuggestions in range(click_iterations):
             #enters to get suggestons
             driver.get("https://www.rockauto.com/en/catalog/")
-            time.sleep(randint(3,6))
-            input_element = driver.find_element(By.XPATH, '//input[@id="topsearchinput[input]"]')
+            input_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//input[@id="topsearchinput[input]"]')))
             input_element.send_keys(search_string)
-            time.sleep(randint(1,3))
+            
             #finds auto auggestion
-            click_total = driver.find_elements(By.XPATH, '//*[@id="autosuggestions[topsearchinput]"]/tbody/tr')
+            time.sleep(.5)
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//*[@id="autosuggestions[topsearchinput]"]/tbody/tr')))
+            click_total = driver.find_elements(By.XPATH, '//*[@id="autosuggestions[topsearchinput]"]/tbody/tr')            
             try:
-                #grabs selection suggestion
+                #grabs selection suggestion                
+                suggested_text = click_total[autosuggestions + 1].text.strip()
                 click_total[autosuggestions+1].click()
             except:
                 print("ERROR OUT OF EXCEPTION")
-            time.sleep(randint(5,8))
+
+            time.sleep(.5)            
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//*[@id="breadcrumb_location_banner_inner[catalog]"]')))
             breadcrumb_text = driver.find_element(By.XPATH, '//*[@id="breadcrumb_location_banner_inner[catalog]"]').text
             # Split by ">" and get the last part
             breadcrumb_parts = breadcrumb_text.split(">")
             last_part = breadcrumb_parts[-1].strip()  # Extracts the last section
             #goes and finds the correct category Wheel Bearing & Hub
-            input_element = driver.find_elements(By.LINK_TEXT, 'Brake & Wheel Hub')
-            if len(input_element) == 1:
-                input_element[0].click()
-                time.sleep(3)
-                input_element = driver.find_elements(By.LINK_TEXT, "Wheel Bearing & Hub")
-                if len(input_element) == 1:
-                    input_element[0].click()
-                    time.sleep(randint(4,7))
+            car_part = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, f"//a[contains(text(), 'Brake & Wheel Hub')]")))
+            if car_part:
+                car_part.click()
+                part_type = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, f"//a[contains(text(), '{category}')]")))
+                if part_type:
+                    part_type.click()
+                    # Check if engine option is present
+                    try:
+                        WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, f"//span[contains(text(), '{SKU_num}')]")))
+                        engine_exist = True
+                    except TimeoutException:
+                        engine_exist = False
+
                     #enters SKU into filter input to narrow down result
                     input_element = driver.find_elements(By.CLASS_NAME, 'filter-input')
-                    if input_element != []:
+                    if input_element:
                         input_element = input_element[0]
                         input_element.send_keys(SKU_num)
                         input_element.send_keys(Keys.ENTER)
-                        time.sleep(randint(2, 4))
+                        WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, f"//span[contains(text(), '{SKU_num}')]")))
+
                         #goes into table and extracts row
                         product_listings = driver.find_elements(By.XPATH, '//table[contains(@class, "nobmp")]/tbody/tr')
                         product_listings = [i for i in product_listings if i.text]
-                        engine_exist = False
+
                         #goes through each row and gets index
                         for index, row in enumerate(product_listings):
-                            row_text = row.text.upper()
-                            #if part exists after search
-                            if index>4:
-                                engine_exist = True
+                            row_text = row.text.lower()
+                            
                             #finds car position and extra details
-                            if "MOOG" in row_text.upper():
+                            if any(brand in row_text for brand in preferred_manufacturers):
+                                manufacturer = row.find_element(By.CLASS_NAME, 'listing-final-manufacturer').text.strip()
+                                print(f"Chosen manufacturer for {suggested_text}: {manufacturer}")
                                 try:
                                     drive_info = row.find_element(By.XPATH, './/div[@class="listing-text-row"]').text
                                 except:
@@ -223,7 +232,7 @@ for SKU in read_file.SKU:
                                             extra[counter] = parts[1] + " " + extra[counter]
                                 break
                         #sees if engine exists
-                        print(engine_exist)
+                        #print(engine_exist)
                         if engine_exist != True:
                             #inserts prompt depending if engine exists
                             if extra[counter] == 0 or extra[counter] == " ":
@@ -239,7 +248,6 @@ for SKU in read_file.SKU:
                                 writer_full.writerow([SKU, make[counter], model[counter], year[counter], drive_info, last_part])
                             except:
                                 writer_full.writerow([SKU, make[counter], model[counter], year[counter], "N/A", "N/A: " + last_part])
-                        time.sleep(randint(1,3))
                     else:
                         print("ERROR 3")    
                 else:
@@ -253,4 +261,4 @@ for SKU in read_file.SKU:
         print(SKU, make[counter], model[counter], year[counter], position[counter], extra[counter])
         counter=counter+1
         
-driver.quit();
+driver.quit()
