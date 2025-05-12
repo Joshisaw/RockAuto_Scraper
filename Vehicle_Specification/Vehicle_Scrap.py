@@ -40,6 +40,9 @@ s = open(rf"{write_path}\Rock_Auto_Scrap_Result_Full.csv", 'w', newline='', enco
 writer_full = csv.writer(s)
 writer_full.writerow(header)
 
+# Preferred brands
+preferred_manufacturers = ["moog", "timken", "skf", "ultra-power"]
+
 #get website
 website = "https://www.rockauto.com/en/partsearch/?partnum="
 
@@ -55,8 +58,6 @@ for SKU in read_file.SKU:
     # load website
     driver.get(website + SKU_num)
 
-    # print("SKU: " + SKU)
-
     # Wait for page listings
     try:
         WebDriverWait(driver, 5).until(
@@ -65,7 +66,7 @@ for SKU in read_file.SKU:
     except TimeoutException:
         writer.writerow([SKU, "N/A", "N/A", "N/A", "N/A", "N/A"])
         continue
-    
+
     #Finds all results in listing container and selects individual one
     all_results = driver.find_elements(By.XPATH, '//*[contains(@class, "listing-border-top-line listing-inner-content")]')
     if not all_results:
@@ -152,10 +153,9 @@ for SKU in read_file.SKU:
         time.sleep(.5)
         #finds total engine suggestions
         click_total = driver.find_elements(By.XPATH, '//*[@id="autosuggestions[topsearchinput]"]/tbody/tr')
-        #print(click_total[2].text)
         click_iterations = len(click_total)-1
         #if not empty
-       for autosuggestions in range(click_iterations):
+        for autosuggestions in range(click_iterations):
             #enters to get suggestons
             driver.get("https://www.rockauto.com/en/catalog/")
             input_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//input[@id="topsearchinput[input]"]')))
